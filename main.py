@@ -1,27 +1,53 @@
 import streamlit as st
 import locale
 import router
-import utils
 
 locale.setlocale(locale.LC_ALL, "pt_BR.UTF-8")
 
+@st.dialog("Realizar Cadastro")
+def signup():
+    st.text("Preencha os campos abaixo para realizar o cadastro")
+
+    with st.form("signup_form"):
+        nome = st.text_input("Nome Completo")
+        email = st.text_input("E-mail", type="email")
+        senha = st.text_input("Senha", type="password")
+
+        payload = {
+            "nome": nome,
+            "email": email,
+            "senha": senha,
+            "eh_admin": False
+        }
+
+        def handle_submission():
+            response = router.post("/user/", payload)
+            st.info(response["message"])
+
+        if st.form_submit_button("Enviar"):
+            handle_submission()
+
 st.write("# Sistema de Hackathons Acadêmicos")
 
-for hackathon in router.get("/hackathon"):
-    id, nome, descricao, max_equipes, data_inicio = hackathon
+with st.form("login_form"):
+    email = st.text_input("E-mail", type="email")
+    senha = st.text_input("Senha", type="password")
 
-    data_inicio = utils.format_datetime(data_inicio)
+    payload = {
+        "email": email,
+        "senha": senha
+    }
 
-    card = st.container(border=True)
+    def handle_auth():
+        response = router.get("/authenticate/", params=payload)
 
-    card.write(f"**{nome}**")
+        if "message" in response:
+            st.error(response["message"])
 
-    if descricao:
-        card.write(descricao)
-    else:
-        card.caption("(Sem descrição)")
+    if st.form_submit_button("Entrar"):
+        handle_auth()
 
-    card.write(f":material/calendar_clock: {data_inicio} → ")
-    card.caption(f"Este evento suporta até {max_equipes} equipes")
+st.text("Não possui conta?")
 
-    card.button("Inscrever-se", key=id)
+if st.button("Cadastre-se"):
+    signup()
