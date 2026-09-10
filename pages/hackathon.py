@@ -51,9 +51,13 @@ user_id = user["id"]
 is_judge = any(item.get("id") == user_id for item in judges)
 is_mentor = any(item.get("id") == user_id for item in mentors)
 role = "Jurado" if is_judge else "Mentor" if is_mentor else "Participante"
-st.caption(f"Perfil nesta hackathon: {role}")
+st.caption(f"Você está acessando como {role}")
 
 teams = router.get("/hackathon/teams/", params={"id_hackathon": hackathon_id})
+
+team_feedback = st.session_state.pop("team_feedback", None)
+if team_feedback:
+    st.success(team_feedback)
 
 if role == "Participante":
     own_team = next(
@@ -68,21 +72,24 @@ if role == "Participante":
         st.subheader("Minha equipe")
         with st.form("create_team"):
             team_name = st.text_input("Nome da equipe")
-            if st.form_submit_button("Cadastrar equipe", type="primary") and team_name:
-                created_team = router.post(
-                    "/hackathon/teams/",
-                    {"nome": team_name, "id_hackathon": int(hackathon_id)},
-                )
-                if created_team.get("id"):
-                    router.post(
-                        "/hackathon/team/add_member",
-                        {
-                            "id_hackathon": int(hackathon_id),
-                            "id_team": created_team["id"],
-                            "id_member": user_id,
-                        },
-                    )
-                st.rerun()
+            submitted = st.form_submit_button("Cadastrar equipe")
+            if submitted:
+                if not team_name.strip():
+                    st.warning("Informe um nome para a equipe.")
+                else:
+                    with st.spinner("Cadastrando equipe..."):
+                        created_team = router.post(
+                            "/hackathon/teams/",
+                            {
+                                "nome": team_name.strip(),
+                                "id_hackathon": int(hackathon_id),
+                                "id_usuario": user_id,
+                            },
+                        )
+                        st.session_state["team_feedback"] = (
+                            f"Equipe '{team_name.strip()}' cadastrada com sucesso."
+                        )
+                        st.rerun()
     else:
         st.subheader(f"Minha equipe: {own_team['nome']}")
         with st.form("project_form"):
@@ -164,3 +171,16 @@ else:
                     },
                 )
                 st.success("Mentoria registrada.")
+
+    st.subheader("Minhas mentorias registradas")
+    mentorings = router.get(
+        "/hackathon/mentoring/",
+        params={"id_hackathon": hackathon_id, "id_mentor": user_id},
+    )
+    if not mentorings:
+        st.info("Nenhuma mentoria registrada nesta hackathon.")
+    for mentoring in mentorings:
+        card = st.container(border=True)
+        card.write(f"**Equipe:** {mentoring['equipe']['nome']}")
+        card.write(f"**Mentor:** {mentoring['mentor']['nome']}")
+        card.write(f"**Comentários:** {mentoring['comentarios']}")
