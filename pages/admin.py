@@ -86,5 +86,5 @@ for hackathon in router.get("/hackathon"):
         card3.write(f"{team["descricao_projeto"]}")
         card3.write(f":blue-badge[{team["area_tematica"]}]")
 
-        card2.button("Ver mentorias")
-        card2.button("Ver avaliações")
+        card2.button("Ver mentorias", key=f"mentoring-{hackathon['id']}-{team['id']}")
+        card2.button("Ver avaliações", key=f"evaluation-{hackathon['id']}-{team['id']}")

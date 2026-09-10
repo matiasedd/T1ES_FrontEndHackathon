@@ -139,29 +139,56 @@ if role == "Participante":
         for member in own_team.get("integrantes", []):
             st.write(f"- {member['nome']} `<{member['email']}>`")
 
-        with st.form("project_form"):
-            title = st.text_input("Título do projeto", own_team.get("titulo_projeto", ""))
-            description = st.text_area("Descrição", own_team.get("descricao_projeto", ""))
-            area = st.selectbox(
-                "Área temática",
-                [
-                    "Engenharia de Software", "Banco de Dados", "Inteligência Artificial",
-                    "Segurança da Informação", "Ciência de Dados",
-                    "Interação Humano-Computador",
-                ],
-            )
-            if st.form_submit_button("Salvar projeto", type="primary"):
-                router.post(
-                    "/hackathon/team/project/",
-                    {
-                        "id": own_team["id"],
-                        "id_hackathon": int(hackathon_id),
-                        "titulo_projeto": title,
-                        "descricao_projeto": description,
-                        "area_tematica": area,
-                    },
+        areas = [
+            "Engenharia de Software", "Banco de Dados", "Inteligência Artificial",
+            "Segurança da Informação", "Ciência de Dados",
+            "Interação Humano-Computador",
+        ]
+
+        @st.dialog("Projeto da equipe")
+        def project_dialog():
+            with st.form("project_form"):
+                title = st.text_input(
+                    "Título do projeto",
+                    own_team.get("titulo_projeto", ""),
                 )
-                st.rerun()
+                description = st.text_area(
+                    "Descrição",
+                    own_team.get("descricao_projeto", ""),
+                )
+                current_area = own_team.get("area_tematica", "")
+                area_index = areas.index(current_area) if current_area in areas else 0
+                area = st.selectbox("Área temática", areas, index=area_index)
+
+                if st.form_submit_button("Salvar projeto", type="primary"):
+                    if not title.strip() or not description.strip():
+                        st.warning("Preencha o título e a descrição do projeto.")
+                    else:
+                        with st.spinner("Salvando projeto..."):
+                            router.post(
+                                "/hackathon/team/project/",
+                                {
+                                    "id": own_team["id"],
+                                    "nome": own_team["nome"],
+                                    "id_hackathon": int(hackathon_id),
+                                    "titulo_projeto": title.strip(),
+                                    "descricao_projeto": description.strip(),
+                                    "area_tematica": area,
+                                },
+                            )
+                        st.rerun()
+
+        if own_team.get("titulo_projeto"):
+            project_card = st.container(border=True)
+            project_card.write(f"**{own_team['titulo_projeto']}**")
+            project_card.write(own_team["descricao_projeto"])
+            project_card.write(f":blue-badge[{own_team['area_tematica']}]")
+            if st.button("Editar projeto", key=f"edit-project-{own_team['id']}"):
+                project_dialog()
+        else:
+            st.info("Sua equipe ainda não possui um projeto registrado.")
+            if st.button("Adicionar projeto", key=f"add-project-{own_team['id']}"):
+                project_dialog()
 
         st.subheader("Avaliações")
         for evaluation in router.get("/hackathon/evaluation/", params={"id_equipe": own_team["id"]}):
