@@ -57,7 +57,17 @@ def require_login(admin_only=False):
 
 def get(endpoint: str, params=None):
     response = requests.get(f"{BASE_PATH}{endpoint}", params=params)
-    return response.json()
+    try:
+        response_data = response.json()
+    except requests.exceptions.JSONDecodeError as error:
+        response.raise_for_status()
+        raise RuntimeError(
+            f"A API retornou uma resposta inválida para GET {endpoint}: "
+            f"HTTP {response.status_code}"
+        ) from error
+
+    response.raise_for_status()
+    return response_data
 
 def post(endpoint: str, data=None, params=None):
     response = requests.post(f"{BASE_PATH}{endpoint}", params=params, json=data)
