@@ -4,6 +4,8 @@ import router
 
 locale.setlocale(locale.LC_ALL, "pt_BR.UTF-8")
 
+router.remove_sidebar()
+
 @st.dialog("Realizar Cadastro")
 def signup():
     st.text("Preencha os campos abaixo para realizar o cadastro")
@@ -43,6 +45,13 @@ with st.form("login_form"):
 
         if "message" in response:
             st.error(response["message"])
+            return
+
+        router.login(response)
+        if response.get("eh_admin", False):
+            st.switch_page("./pages/admin.py")
+        else:
+            st.switch_page("./pages/home.py")
 
     if st.form_submit_button("Entrar"):
         handle_auth()
