@@ -54,6 +54,7 @@ role = "Jurado" if is_judge else "Mentor" if is_mentor else "Participante"
 st.caption(f"Você está acessando como {role}")
 
 teams = router.get("/hackathon/teams/", params={"id_hackathon": hackathon_id})
+users = router.get("/user/")
 
 team_feedback = st.session_state.pop("team_feedback", None)
 if team_feedback:
@@ -92,6 +93,52 @@ if role == "Participante":
                         st.rerun()
     else:
         st.subheader(f"Minha equipe: {own_team['nome']}")
+        team_member_ids = {
+            member["id"]
+            for team in teams
+            for member in team.get("integrantes", [])
+        }
+        available_members = [
+            candidate
+            for candidate in users
+            if candidate.get("id") not in team_member_ids
+            and candidate.get("id") != user_id
+            and not candidate.get("eh_admin", False)
+        ]
+
+        with st.form("add_member_form"):
+            member_options = {
+                f"{member['nome']} <{member['email']}>": member["id"]
+                for member in available_members
+            }
+            selected_member = st.selectbox(
+                "Participante para adicionar",
+                list(member_options),
+                disabled=not member_options,
+            ) if member_options else None
+            add_member = st.form_submit_button(
+                "Adicionar integrante",
+                disabled=not member_options,
+            )
+            if add_member and selected_member is not None:
+                with st.spinner("Adicionando integrante..."):
+                    router.post(
+                        "/hackathon/team/add_member",
+                        params={
+                            "id_hackathon": int(hackathon_id),
+                            "id_team": own_team["id"],
+                            "id_member": member_options[selected_member],
+                        },
+                    )
+                st.session_state["team_feedback"] = (
+                    f"{selected_member} foi adicionado à equipe."
+                )
+                st.rerun()
+
+        st.write("**Integrantes**")
+        for member in own_team.get("integrantes", []):
+            st.write(f"- {member['nome']} `<{member['email']}>`")
+
         with st.form("project_form"):
             title = st.text_input("Título do projeto", own_team.get("titulo_projeto", ""))
             description = st.text_area("Descrição", own_team.get("descricao_projeto", ""))
